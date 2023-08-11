@@ -646,10 +646,13 @@ def plot_multi_hists_2(
         axes[0, ax_idx].set_xlim(ax_bins[0], ax_bins[-1])
         if do_ratio_to_first:
             axes[0, ax_idx].set_xticklabels([])
-            axes[1, ax_idx].set_xlabel(col_labels[ax_idx])
+            axes[1, ax_idx].set_xlabel(col_labels[ax_idx], fontsize=15)
+            axes[1, ax_idx].ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+            axes[1, ax_idx].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            axes[0, ax_idx].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
             axes[1, ax_idx].set_xlim(ax_bins[0], ax_bins[-1])
         else:
-            axes[0, ax_idx].set_xlabel(col_labels[ax_idx])
+            axes[0, ax_idx].set_xlabel(col_labels[ax_idx], fontsize=15)
 
         # Y axis
         if logy:
@@ -668,9 +671,9 @@ def plot_multi_hists_2(
         if y_label is not None:
             axes[0, ax_idx].set_ylabel(y_label)
         elif do_norm:
-            axes[0, ax_idx].set_ylabel("Normalised Entries")
+            axes[0, ax_idx].set_ylabel("Normalised Entries", fontsize=14)
         else:
-            axes[0, ax_idx].set_ylabel("Entries")
+            axes[0, ax_idx].set_ylabel("Entries", fontsize=15)
 
         # Ratio Y axis
         if do_ratio_to_first:
@@ -679,7 +682,7 @@ def plot_multi_hists_2(
             if rat_label is not None:
                 axes[1, ax_idx].set_ylabel(rat_label)
             else:
-                axes[1, ax_idx].set_ylabel(f"Ratio to {data_labels[0]}")
+                axes[1, ax_idx].set_ylabel(f"Ratio to {data_labels[0]}", fontsize=12)
 
             # Ratio X line:
             axes[1, ax_idx].hlines(
@@ -720,7 +723,7 @@ def add_hist(
     ax: axes.Axes,
     data: np.ndarray,
     bins: np.ndarray,
-    do_norm: bool = False,
+    do_norm: bool = True,
     label: str = "",
     scale_factor: float = None,
     hist_kwargs: dict = None,
@@ -757,8 +760,14 @@ def add_hist(
     """
 
     # Compute the histogram
-    hist, _ = np.histogram(data, bins, density=do_norm)
+    hist, _ = np.histogram(data, bins)
     hist_err = np.sqrt(hist)
+
+    # Normalise the errors
+    if do_norm:
+        divisor = np.array(np.diff(bins), float) / hist.sum()
+        hist = hist * divisor
+        hist_err = hist_err * divisor
 
     # Apply the scale factors
     if scale_factor is not None:
@@ -778,11 +787,12 @@ def add_hist(
     if err_kwargs is not None and bool(err_kwargs):
         e_kwargs = err_kwargs
     else:
-        e_kwargs = {"color": line._edgecolor, "alpha": 0.2, "fill": True}
+        e_kwargs = {"color": line._edgecolor, "alpha": 0.5, "fill": True}
 
     # Include the uncertainty in the plots as a shaded region
     if do_err:
         ax.stairs(hist + hist_err, bins, baseline=hist - hist_err, **e_kwargs)
+
 
 
 def plot_multi_correlations(
@@ -790,8 +800,11 @@ def plot_multi_correlations(
     data_labels: list,
     col_labels: list,
     n_bins: int = 50,
+    bins: list | None = None,
+    fig_scale: float = 1,
     n_kde_points: int = 50,
     do_err: bool = True,
+    do_norm: bool = True,
     hist_kwargs: list | None = None,
     err_kwargs: list | None = None,
     legend_kwargs: dict | None = None,
@@ -810,17 +823,25 @@ def plot_multi_correlations(
     fig, axes = plt.subplots(
         n_features,
         n_features,
-        figsize=(2 * n_features + 3, 2 * n_features + 1),
+        figsize=((2 * n_features + 3) * fig_scale, (2 * n_features + 1) * fig_scale),
         gridspec_kw={"wspace": 0.04, "hspace": 0.04},
     )
 
+    # Define the binning as auto or not
+    all_bins = []
+    for n in range(n_features):
+        if bins is None or (isinstance(bins[n], str) and bins[n] == "auto"):
+            all_bins.append(quantile_bins(data_list[0][:, n], bins=n_bins))
+        else:
+            all_bins.append(bins[n])
+
     # Cycle through the rows and columns and set the axis labels
     for row in range(n_features):
-        axes[0, 0].set_ylabel("Normalised Entries", horizontalalignment="right", y=1.0)
+        axes[0, 0].set_ylabel("A.U.", loc="top", fontsize=12)
         if row != 0:
-            axes[row, 0].set_ylabel(col_labels[row])
+            axes[row, 0].set_ylabel(col_labels[row], fontsize=12)
         for column in range(n_features):
-            axes[-1, column].set_xlabel(col_labels[column])
+            axes[-1, column].set_xlabel(col_labels[column], fontsize=12)
             if column != 0:
                 axes[row, column].set_yticklabels([])
 
@@ -830,7 +851,7 @@ def plot_multi_correlations(
                     axis="x", which="both", direction="in", labelbottom=False
                 )
             if row == column == 0:
-                axes[row, column].tick_params(axis="y", colors="w")
+                axes[row, column].yaxis.set_ticklabels([])
             elif column > 0:
                 axes[row, column].tick_params(
                     axis="y", which="both", direction="in", labelbottom=False
@@ -839,7 +860,7 @@ def plot_multi_correlations(
             # For the diagonals they become histograms
             # Bins are based on the first datapoint in the list
             if row == column:
-                bins = quantile_bins(data_list[0][:, row], bins=n_bins)
+                bins = all_bins[column]
                 for i, d in enumerate(data_list):
                     add_hist(
                         axes[row, column],
@@ -848,6 +869,7 @@ def plot_multi_correlations(
                         hist_kwargs=hist_kwargs[i],
                         err_kwargs=err_kwargs[i],
                         do_err=do_err,
+                        do_norm=do_norm,
                     )
                     axes[row, column].set_xlim(bins[0], bins[-1])
 
@@ -857,7 +879,7 @@ def plot_multi_correlations(
                 y_bounds = np.quantile(data_list[0][:, row], [0.001, 0.999])
                 for i, d in enumerate(data_list):
                     color = None
-                    if "color" in hist_kwargs[i].keys():
+                    if hist_kwargs[i] is not None and "color" in hist_kwargs[i].keys():
                         color = hist_kwargs[i]["color"]
                     sns.kdeplot(
                         x=d[:, column],
@@ -880,14 +902,15 @@ def plot_multi_correlations(
     # Create some invisible lines which will be part of the legend
     for i, d in enumerate(data_list):
         color = None
-        if "color" in hist_kwargs[i].keys():
+        if hist_kwargs[i] is not None and "color" in hist_kwargs[i].keys():
             color = hist_kwargs[i]["color"]
         axes[row, column].plot([], [], label=data_labels[i], color=color)
     fig.legend(**(legend_kwargs or {}))
 
-    # Save the file
+    # # Save the file
+    # fig.tight_layout()
     if path is not None:
-        fig.savefig(path)
+        fig.savefig(path, bbox_inches='tight')
 
     # Return a rendered image, or the matplotlib figure, or close
     if return_img:
@@ -899,3 +922,4 @@ def plot_multi_correlations(
     if return_fig:
         return fig
     plt.close(fig)
+

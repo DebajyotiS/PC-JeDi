@@ -66,6 +66,7 @@ class TransformerDiffusionGenerator(pl.LightningModule):
         self.loss_fn = get_loss_fn(loss_name)
         self.mle_loss_weight = mle_loss_weight
         self.ema_sync = ema_sync
+        self.eta_range = eta_range
 
         # The encoder and scheduler needed for diffusion
         self.diff_sched = VPDiffusionSchedule(**diff_config)
@@ -92,7 +93,7 @@ class TransformerDiffusionGenerator(pl.LightningModule):
         self.sampler_steps = sampler_steps
 
         # Record of the outputs of the validation step
-        self.val_outs = []
+        self.val_step_outs = []
 
     def forward(
         self,

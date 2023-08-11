@@ -15,14 +15,14 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="/srv/beegfs/scratch/users/s/senguptd/jet_diffusion/final_cedric_changes",
+        default="/srv/beegfs/scratch/users/s/senguptd/jet_diffusion/epic_gan",
         help="Path to directory where all the data is saved.",
     )
     parser.add_argument(
         "--model_name",
         type=str,
         help="Name of the model to evaluate.",
-        default="2023-07-10_18-56-53-293584",
+        default="30",
     )
     parser.add_argument(
         "--jet_types",
@@ -33,7 +33,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--file_names",
         type=str,
-        default="*csts.h5",
+        default="*_csts.h5",
         help="Comma separated names of the files to generate from.",
     )
 
@@ -55,7 +55,7 @@ def get_args() -> Namespace:
         default="",
         help="Combined argument which takes precidence over model_name and file_names.",
     )
-    parser.add_argument("--key", type=str, default="etaphipt", help="key to use for the data in the h5 file.")
+    parser.add_argument("--key", type=str, default="etaphipt_frac", help="key to use for the data in the h5 file.")
     args = parser.parse_args()
     return args
 
@@ -78,9 +78,17 @@ def main() -> None:
     path = Path(args.save_dir, args.model_name, "outputs")
     
     #laod the full config to read the num_particles
-    with open(args.save_dir + "/" + args.model_name + "/full_config.yaml") as file:
-        info = yaml.safe_load(file)
-    num_particles = info["datamodule"]["data_conf"]["jetnet_config"]["num_particles"]
+    try:
+        with open(args.save_dir + "/" + args.model_name + "/full_config.yaml") as file:
+            info = yaml.safe_load(file)
+        num_particles = info["datamodule"]["data_conf"]["jetnet_config"]["num_particles"]
+    except FileNotFoundError:
+        print("No full config found, using default value of 30")
+        if "uncond" in args.model_name:
+            num_particles = int(args.model_name.split("_")[0])
+        else:
+            num_particles = int(args.model_name)
+
     # Get all the files to run over, allow wildcarding
     file_paths = get_output_file_list(path, args.jet_types, args.file_names)
 
@@ -105,8 +113,12 @@ def main() -> None:
             "jetnet_data_test_csts.h5",
         )
 
+        # if file exists, skip
+        # if outpath.is_file():
+        #     continue
+
         # Save the metrics
-        key = "substructure_frac" if args.key == "etaphipt_frac" else "substructure"
+        key = "substructure_frac"
         try:
             dump_metrics(
                 file_path,

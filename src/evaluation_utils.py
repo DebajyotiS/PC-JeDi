@@ -315,19 +315,25 @@ def dump_metrics(
     # Our full suite of substructure metrics
     gen_subfile = gen_path.parent / gen_path.stem.replace("csts", f"{key}.h5")
     real_subfile = real_path.parent / real_path.stem.replace("csts", f"{key}.h5")
-    with h5py.File(gen_subfile, "r") as f:
-        with h5py.File(real_subfile, "r") as rf:
-            for k in f.keys():
-                gen_sub = f[k][:].flatten()
-                real_sub = rf[k][:].flatten()
-                for metric in ["w1"]:
-                    metric_val, metric_std = bootstrapped_marginal_distance(
-                        gen_sub, real_sub, metric=metric, **bootstrap
-                    )
-                    print(f"{metric}_{k}: {metric_val:4.3E} +- {metric_std:5.4E}")
-                    metric_dict[f"{metric}_{k}"] = metric_val
-                    metric_dict[f"{metric}_{k}_err"] = metric_std
-
+    try:
+        with h5py.File(gen_subfile, "r") as f:
+            with h5py.File(real_subfile, "r") as rf:
+                for k in f.keys():
+                    gen_sub = f[k][:].flatten()
+                    real_sub = rf[k][:].flatten()
+                    # Drop the nan values
+                    gen_sub = gen_sub[~np.isnan(gen_sub)]
+                    real_sub = real_sub[~np.isnan(real_sub)]
+                    for metric in ["w1"]:
+                        metric_val, metric_std = bootstrapped_marginal_distance(
+                            gen_sub, real_sub, metric=metric, **bootstrap
+                        )
+                        print(f"{metric}_{k}: {metric_val:4.3E} +- {metric_std:5.4E}")
+                        metric_dict[f"{metric}_{k}"] = metric_val
+                        metric_dict[f"{metric}_{k}_err"] = metric_std
+    except FileNotFoundError:
+        print(f"Could not find {gen_subfile}. Skipping substructure metrics.")
+        
     # Save the entire dictionary into a yaml file
     metric_dict = {k: float(v) for k, v in metric_dict.items()}
     with open(outpath, "w") as f:

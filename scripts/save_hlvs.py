@@ -18,14 +18,14 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="/srv/beegfs/scratch/users/s/senguptd/jet_diffusion/jetnet_data/",
+        default="/home/users/s/senguptd/scratch/jet_diffusion/epic_gan",
         help="Path to directory where all the data is saved.",
     )
     parser.add_argument(
         "--model_name",
         type=str,
+        default="150",
         help="Name of the model to evaluate.",
-        default="jetnet_data_30",
     )
     parser.add_argument(
         "--jet_types",
@@ -57,7 +57,7 @@ def get_args() -> Namespace:
 def get_particle_count(file_path: Path) -> int:
     try:
         with h5py.File(file_path, "r") as f:
-            count = f["etaphipt"].shape[1]
+            count = f["etaphipt_frac"].shape[1]
     except FileNotFoundError:
         # The folder nanme is the number of particles
         name = file_path.parent.name
@@ -65,14 +65,6 @@ def get_particle_count(file_path: Path) -> int:
             name = name.split("_")[0]
         count = int(name)
     return count
-
-
-def get_cond_info(file_path: Path) -> int:
-    #read the yaml file
-    with open(file_path, "r") as f:
-        config = yaml.safe_load(f)
-    high_as_context = config.datamodule.data_conf.high_as_context
-    return high_as_context
 
 
 def main() -> None:
@@ -99,6 +91,7 @@ def main() -> None:
     # Cycle through the files and calculate the substructure
     for file_path in file_paths:
         print(f"-- running on {file_path.parent.name} jets from {file_path.name}")
+        print(f"-- using key {keytouse}")
 
         # Create the output file name by swapping the csts flag with substructure
         # load the constituents from the file
@@ -110,6 +103,11 @@ def main() -> None:
         append = "_frac" if keytouse == "etaphipt_frac" else ""
         outpath = file_path.parent / file_path.stem.replace("csts", f"substructure{append}")
         outpath = outpath.with_suffix(f".h5")
+
+        # If the file already exists, skip it
+        if outpath.exists():
+            print("--- file already exists, skipping")
+            continue
 
         # Save the substructure variables in the same folder with an added suffix
         try:
