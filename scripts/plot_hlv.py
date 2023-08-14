@@ -49,17 +49,17 @@ feat_subvars_dict = [r"$\tau_{21}^{\mathrm{rel}}$", r"$\tau_{32}^{\mathrm{rel}}$
 def get_args():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_const", type=int, default=30)
+    parser.add_argument("--num_const", type=int, default=150)
     parser.add_argument("--epic_project", type=str, default="final_cedric_changes")
-    parser.add_argument("--epicjedi_directory", type=str, default="2023-07-16_09-58-26-913806")
+    parser.add_argument("--epicjedi_directory", type=str, default="2023-07-16_09-58-26-905101")
     parser.add_argument("--pc_jedi_project", type=str, default="pcjedi")
     parser.add_argument("--pcjedi_directory", type=str, default="model")
     parser.add_argument("--epicfm_project", type=str, default="epic_fm")
-    parser.add_argument("--epic_fm_directory", type=str, default="30_uncond")
+    parser.add_argument("--epic_fm_directory", type=str, default="150_uncond")
     parser.add_argument("--cond", type=str, default="uncond")
     parser.add_argument("--kde_points", type=int, default=5)
     parser.add_argument("--epic_gan_project", type=str, default="epic_gan", help="Name of the EPiC-GAN project.")
-    parser.add_argument("--epic_gan_directory", type=str, default="30", help="Name of the EPiC-GAN directory.")  
+    parser.add_argument("--epic_gan_directory", type=str, default="150", help="Name of the EPiC-GAN directory.")  
     args = parser.parse_args()
     return args
 

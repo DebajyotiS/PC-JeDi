@@ -15,14 +15,14 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="/srv/beegfs/scratch/users/s/senguptd/jet_diffusion/epic_gan",
+        default="/srv/beegfs/scratch/users/s/senguptd/jet_diffusion/jetnet_data",
         help="Path to directory where all the data is saved.",
     )
     parser.add_argument(
         "--model_name",
         type=str,
         help="Name of the model to evaluate.",
-        default="30",
+        default="jetnet_data_150",
     )
     parser.add_argument(
         "--jet_types",
@@ -33,7 +33,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--file_names",
         type=str,
-        default="*_csts.h5",
+        default="jetnet_data_train_csts.h5",
         help="Comma separated names of the files to generate from.",
     )
 
@@ -49,6 +49,13 @@ def get_args() -> Namespace:
         help="Number of bootstrapped batches to evaluate.",
         default=40,
     )
+    parser.add_argument(
+        "--numparticles",
+        type=int,
+        default=150,
+        help="Number of particles in the jet.",
+    )
+
     parser.add_argument(
         "--realname_modelname_filenames",
         type=str,
@@ -84,10 +91,7 @@ def main() -> None:
         num_particles = info["datamodule"]["data_conf"]["jetnet_config"]["num_particles"]
     except FileNotFoundError:
         print("No full config found, using default value of 30")
-        if "uncond" in args.model_name:
-            num_particles = int(args.model_name.split("_")[0])
-        else:
-            num_particles = int(args.model_name)
+        num_particles = args.numparticles
 
     # Get all the files to run over, allow wildcarding
     file_paths = get_output_file_list(path, args.jet_types, args.file_names)
